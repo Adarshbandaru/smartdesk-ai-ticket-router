@@ -5,6 +5,8 @@ import NewTicket from './pages/NewTicket';
 import Inbox from './pages/Inbox';
 import Analytics from './pages/Analytics';
 import FeedbackQueue from './pages/FeedbackQueue';
+import Settings from './pages/Settings';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
           <Route path="inbox" element={<Inbox />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="feedback" element={<FeedbackQueue />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </Router>

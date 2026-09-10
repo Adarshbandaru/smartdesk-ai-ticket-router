@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from schemas.schemas import TicketResponse, TicketCreate
 from database.database import get_db
 from database.models import Ticket
-from typing import List
+from typing import List, Optional
 
 router = APIRouter()
 
@@ -25,10 +26,11 @@ def create_ticket(ticket: TicketCreate, category: str, priority: str, root_cause
     db.refresh(db_ticket)
     return db_ticket
 
-@router.get("/", response_model=List[TicketResponse])
+@router.get("/")
 def get_tickets(
     skip: int = 0, limit: int = 50, 
-    status: str = None, priority: str = None, category: str = None,
+    status: Optional[str] = None, priority: Optional[str] = None, 
+    category: Optional[str] = None, search: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Ticket)
@@ -38,10 +40,41 @@ def get_tickets(
         query = query.filter(Ticket.priority == priority)
     if category:
         query = query.filter(Ticket.category == category)
-        
+    if search:
+        query = query.filter(
+            or_(
+                Ticket.title.ilike(f"%{search}%"),
+                Ticket.description.ilike(f"%{search}%"),
+                Ticket.assigned_team.ilike(f"%{search}%")
+            )
+        )
+    
+    total = query.count()
     tickets = query.order_by(Ticket.created_at.desc()).offset(skip).limit(limit).all()
-    return tickets
+    
+    return {
+        "tickets": [TicketResponse.model_validate(t) for t in tickets],
+        "total": total
+    }
 
 @router.get("/{ticket_id}", response_model=TicketResponse)
 def get_ticket(ticket_id: int, db: Session = Depends(get_db)):
-    return db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return ticket
+
+@router.patch("/{ticket_id}/status")
+def update_ticket_status(ticket_id: int, status: str, db: Session = Depends(get_db)):
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    valid_statuses = ["Open", "In Progress", "Resolved", "Closed"]
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+    
+    ticket.status = status
+    db.commit()
+    db.refresh(ticket)
+    return ticket

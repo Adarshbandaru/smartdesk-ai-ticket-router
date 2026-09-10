@@ -16,7 +16,7 @@ env/
 *.sqlite3
 
 # Models
-backend/models/
+backend/ml/models/
 backend/dataset/*.csv
 
 # IDE

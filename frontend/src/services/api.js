@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api', // Update if deployed
+  baseURL: 'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -24,6 +24,13 @@ export const getTickets = async (params) => {
 
 export const getTicket = async (id) => {
   const response = await api.get(`/tickets/${id}`);
+  return response.data;
+};
+
+export const updateTicketStatus = async (id, status) => {
+  const response = await api.patch(`/tickets/${id}/status`, null, {
+    params: { status }
+  });
   return response.data;
 };
 

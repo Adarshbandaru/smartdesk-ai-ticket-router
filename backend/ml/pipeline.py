@@ -1,7 +1,6 @@
 import os
 import joblib
 import time
-from transformers import pipeline
 import numpy as np
 
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
