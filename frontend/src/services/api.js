@@ -44,6 +44,11 @@ export const getModelMetrics = async () => {
   return response.data;
 };
 
+export const getModelHistory = async () => {
+  const response = await api.get('/analytics/metrics/history');
+  return response.data;
+};
+
 export const submitFeedback = async (data) => {
   const response = await api.post('/feedback/', data);
   return response.data;

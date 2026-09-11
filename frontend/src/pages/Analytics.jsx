@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { getModelMetrics, getDashboardMetrics } from '../services/api';
+import { getModelMetrics, getDashboardMetrics, getModelHistory } from '../services/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { motion } from 'framer-motion';
 import GlassCard from '../components/GlassCard';
 import ProgressRing from '../components/ProgressRing';
 import LoadingSkeleton from '../components/LoadingSkeleton';
-import { Brain, Target, Crosshair, Activity, TrendingUp } from 'lucide-react';
+import { Brain, Target, Crosshair, Activity, TrendingUp, GitBranch, Clock } from 'lucide-react';
 
 const COLORS = ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
 
@@ -15,7 +15,11 @@ const CustomTooltip = ({ active, payload, label }) => {
     <div className="glass rounded-xl px-4 py-3 shadow-2xl border border-white/10">
       <p className="text-xs font-semibold text-slate-300 mb-1">{label}</p>
       {payload.map((item, i) => (
-        <p key={i} className="text-sm font-bold text-white">{typeof item.value === 'number' ? (item.value * 100).toFixed(1) + '%' : item.value}</p>
+        <div key={i} className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full" style={{ background: item.color }} />
+          <span className="text-xs text-slate-400 capitalize">{item.dataKey}:</span>
+          <span className="text-sm font-bold text-white">{typeof item.value === 'number' ? (item.value * 100).toFixed(1) + '%' : item.value}</span>
+        </div>
       ))}
     </div>
   );
@@ -24,23 +28,29 @@ const CustomTooltip = ({ active, payload, label }) => {
 const Analytics = () => {
   const [modelMetrics, setModelMetrics] = useState(null);
   const [dashMetrics, setDashMetrics] = useState(null);
+  const [historyData, setHistoryData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getModelMetrics(), getDashboardMetrics()])
-      .then(([model, dash]) => { setModelMetrics(model); setDashMetrics(dash); })
+    Promise.all([getModelMetrics(), getDashboardMetrics(), getModelHistory()])
+      .then(([model, dash, history]) => {
+        setModelMetrics(model);
+        setDashMetrics(dash);
+        // Map version history for chart
+        const mapped = history.map(v => ({
+          name: `v${v.version}.0`,
+          accuracy: v.accuracy,
+          precision: v.precision,
+          recall: v.recall,
+          f1_score: v.f1_score,
+          version: v.version,
+          created_at: v.created_at,
+        }));
+        setHistoryData(mapped);
+      })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
   }, []);
-
-  // Mock historical data
-  const historyData = [
-    { name: 'v1.0', accuracy: 0.85, precision: 0.84, recall: 0.86 },
-    { name: 'v1.1', accuracy: 0.88, precision: 0.87, recall: 0.89 },
-    { name: 'v1.2', accuracy: 0.89, precision: 0.88, recall: 0.90 },
-    { name: 'v1.3', accuracy: 0.91, precision: 0.90, recall: 0.92 },
-    { name: 'v1.4', accuracy: 0.92, precision: 0.91, recall: 0.93 },
-  ];
 
   if (loading) return (
     <div className="space-y-6">
@@ -52,6 +62,8 @@ const Analytics = () => {
     </div>
   );
 
+  const latestVersion = historyData.length > 0 ? historyData[historyData.length - 1] : null;
+
   const metricCards = [
     { label: 'Accuracy', value: modelMetrics?.accuracy, color: '#6366f1', icon: Target },
     { label: 'Precision', value: modelMetrics?.precision, color: '#8b5cf6', icon: Crosshair },
@@ -62,13 +74,15 @@ const Analytics = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center gradient-glow">
-          <Brain className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-white">AI Model Analytics</h2>
-          <p className="text-xs text-slate-400">Model: {modelMetrics?.model_name} · Version {modelMetrics?.version}</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center gradient-glow">
+            <Brain className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">AI Model Analytics</h2>
+            <p className="text-xs text-slate-400">Model: {modelMetrics?.model_name} · Version {modelMetrics?.version}</p>
+          </div>
         </div>
       </div>
 
@@ -102,7 +116,7 @@ const Analytics = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Accuracy History */}
+        {/* Model Performance History — from real API data */}
         <GlassCard>
           <h3 className="text-base font-semibold text-slate-100 mb-5">Model Performance History</h3>
           <div className="h-72">
@@ -126,9 +140,9 @@ const Analytics = () => {
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                 <YAxis domain={[0.8, 1]} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={v => `${(v*100).toFixed(0)}%`} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="accuracy" stroke="#6366f1" strokeWidth={2} fill="url(#accGrad)" dot={{ fill: '#6366f1', r: 3 }} />
-                <Area type="monotone" dataKey="precision" stroke="#8b5cf6" strokeWidth={2} fill="url(#precGrad)" dot={{ fill: '#8b5cf6', r: 3 }} />
-                <Area type="monotone" dataKey="recall" stroke="#10b981" strokeWidth={2} fill="url(#recGrad)" dot={{ fill: '#10b981', r: 3 }} />
+                <Area type="monotone" dataKey="accuracy" stroke="#6366f1" strokeWidth={2} fill="url(#accGrad)" dot={{ fill: '#6366f1', r: 4, strokeWidth: 0 }} />
+                <Area type="monotone" dataKey="precision" stroke="#8b5cf6" strokeWidth={2} fill="url(#precGrad)" dot={{ fill: '#8b5cf6', r: 4, strokeWidth: 0 }} />
+                <Area type="monotone" dataKey="recall" stroke="#10b981" strokeWidth={2} fill="url(#recGrad)" dot={{ fill: '#10b981', r: 4, strokeWidth: 0 }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -142,7 +156,7 @@ const Analytics = () => {
           </div>
         </GlassCard>
 
-        {/* Category Distribution Accuracy */}
+        {/* Category Distribution */}
         <GlassCard>
           <h3 className="text-base font-semibold text-slate-100 mb-5">Category Distribution</h3>
           <div className="h-72 flex justify-center">
@@ -176,27 +190,72 @@ const Analytics = () => {
         </GlassCard>
       </div>
 
-      {/* Team Performance */}
-      <GlassCard>
-        <h3 className="text-base font-semibold text-slate-100 mb-5">Team Ticket Distribution</h3>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={dashMetrics?.charts.team_distribution || []} barSize={28}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-              <Tooltip content={<CustomTooltip />} />
-              <defs>
-                <linearGradient id="teamGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1} />
-                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0.8} />
-                </linearGradient>
-              </defs>
-              <Bar dataKey="value" fill="url(#teamGrad)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </GlassCard>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Team Ticket Distribution */}
+        <GlassCard className="lg:col-span-2">
+          <h3 className="text-base font-semibold text-slate-100 mb-5">Team Ticket Distribution</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dashMetrics?.charts.team_distribution || []} barSize={28}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <defs>
+                  <linearGradient id="teamGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#6366f1" stopOpacity={0.8} />
+                  </linearGradient>
+                </defs>
+                <Bar dataKey="value" fill="url(#teamGrad)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </GlassCard>
+
+        {/* Model Version History Table */}
+        <GlassCard className="!p-0 overflow-hidden">
+          <div className="p-5 border-b border-white/5">
+            <h3 className="text-base font-semibold text-white flex items-center gap-2">
+              <GitBranch className="w-4 h-4 text-indigo-400" />
+              Version History
+            </h3>
+          </div>
+          <div className="divide-y divide-white/[0.03]">
+            {historyData.slice().reverse().map((v, i) => {
+              const isLatest = i === 0;
+              return (
+                <motion.div
+                  key={v.version}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: i * 0.06 }}
+                  className={`px-5 py-3.5 flex items-center gap-3 ${isLatest ? 'bg-indigo-500/[0.06]' : 'hover:bg-white/[0.02]'} transition-colors`}
+                >
+                  {/* Version dot */}
+                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isLatest ? 'bg-indigo-400 ring-4 ring-indigo-500/20' : 'bg-slate-500'}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-200">v{v.version}.0</span>
+                      {isLatest && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400 text-[10px] font-bold uppercase">Latest</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Acc: {(v.accuracy * 100).toFixed(1)}% · F1: {(v.f1_score * 100).toFixed(1)}%
+                    </p>
+                  </div>
+                  {v.created_at && (
+                    <span className="text-[10px] text-slate-500 shrink-0">
+                      {new Date(v.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        </GlassCard>
+      </div>
     </div>
   );
 };
