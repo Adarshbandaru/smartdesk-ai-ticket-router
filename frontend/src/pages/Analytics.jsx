@@ -36,9 +36,10 @@ const Analytics = () => {
       .then(([model, dash, history]) => {
         setModelMetrics(model);
         setDashMetrics(dash);
-        // Map version history for chart
+        // Map version history for chart (v1.0 to v1.4)
         const mapped = history.map(v => ({
-          name: `v${v.version}.0`,
+          name: `v1.${v.version - 1}`,
+          versionLabel: `v1.${v.version - 1}`,
           accuracy: v.accuracy,
           precision: v.precision,
           recall: v.recall,
@@ -81,7 +82,7 @@ const Analytics = () => {
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">AI Model Analytics</h2>
-            <p className="text-xs text-slate-400">Model: {modelMetrics?.model_name} · Version {modelMetrics?.version}</p>
+            <p className="text-xs text-slate-400">Model: {modelMetrics?.model_name} · Version {latestVersion ? latestVersion.versionLabel : 'v1.4'}</p>
           </div>
         </div>
       </div>
@@ -236,7 +237,7 @@ const Analytics = () => {
                   <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isLatest ? 'bg-indigo-400 ring-4 ring-indigo-500/20' : 'bg-slate-500'}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-200">v{v.version}.0</span>
+                      <span className="text-sm font-semibold text-slate-200">{v.versionLabel}</span>
                       {isLatest && (
                         <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400 text-[10px] font-bold uppercase">Latest</span>
                       )}
