@@ -15,7 +15,7 @@ from routes.predict import router as predict_router
 from routes.feedback import router as feedback_router
 from routes.analytics import router as analytics_router
 from routes.auth import router as auth_router
-from schemas.schemas import FeedbackCreate
+from schemas.schemas import FeedbackCreate, ExplainRequest
 
 # Ensure tables are created
 Base.metadata.create_all(bind=engine)
@@ -108,6 +108,17 @@ def get_feedback_root(db: Session = Depends(get_db)):
 def post_retrain_root(db: Session = Depends(get_db)):
     from ml.retrain import RetrainingPipeline
     return RetrainingPipeline.run_retraining(db)
+
+# Direct endpoint requested for Explainable AI (LIME)
+@app.post("/explain", status_code=status.HTTP_200_OK, tags=["Explainable AI"])
+def post_explain_root(request: ExplainRequest):
+    from services.explain_service import lime_service
+    return lime_service.explain(
+        text=request.ticket_text,
+        predicted_class=request.prediction,
+        model_type=request.model_type or "category",
+        num_features=request.num_features or 10
+    )
 
 @app.get("/", status_code=status.HTTP_200_OK, tags=["Root"])
 def root():

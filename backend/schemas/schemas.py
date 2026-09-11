@@ -57,6 +57,33 @@ class TicketListResponse(BaseModel):
     total_pages: int
 
 # --- Prediction & Explanation Schemas ---
+class ExplainRequest(BaseModel):
+    ticket_text: str = Field(..., min_length=1, description="Raw support ticket text or concatenated title and description")
+    prediction: Optional[str] = Field(None, description="Optional predicted class label to explain (e.g. Booking, Refund)")
+    model_type: Optional[str] = Field("category", description="Target model to explain: category, priority, or root_cause")
+    num_features: Optional[int] = Field(10, ge=1, le=30, description="Top N important features to extract")
+
+class WordImpact(BaseModel):
+    word: str
+    score: float
+    impact: str
+
+class SpanHighlight(BaseModel):
+    word: str
+    start: int
+    end: int
+    score: float
+    sentiment: str
+
+class DetailedExplanationResponse(BaseModel):
+    predicted_class: str
+    importance_score: float
+    top_positive_words: List[WordImpact]
+    top_negative_words: List[WordImpact]
+    feature_importance: Dict[str, float]
+    highlighted_spans: List[SpanHighlight]
+    highlighted_text: List[Union[tuple, list]]
+
 class CategoryCandidate(BaseModel):
     category: str
     confidence: float
@@ -64,6 +91,10 @@ class CategoryCandidate(BaseModel):
 class LimeExplanation(BaseModel):
     feature_importance: Dict[str, float]
     highlighted_text: List[Union[tuple, list]]  # [("word", score)]
+    top_positive_words: Optional[List[WordImpact]] = None
+    top_negative_words: Optional[List[WordImpact]] = None
+    highlighted_spans: Optional[List[SpanHighlight]] = None
+    importance_score: Optional[float] = None
 
 class PredictionResponse(BaseModel):
     category: str
