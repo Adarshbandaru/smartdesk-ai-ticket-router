@@ -1,10 +1,11 @@
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from sqlalchemy.orm import Session
 import time
 
 from config import settings
-from database.session import Base, engine
+from database.session import Base, engine, get_db
 import database.models  # Register all models with Base
 from database.seed import seed_database
 from utils.logger import LoggingMiddleware, logger
@@ -73,6 +74,17 @@ app.include_router(predict_router, prefix=f"{settings.API_PREFIX}/predict", tags
 app.include_router(tickets_router, prefix=f"{settings.API_PREFIX}/tickets", tags=["Tickets"])
 app.include_router(feedback_router, prefix=f"{settings.API_PREFIX}/feedback", tags=["Feedback"])
 app.include_router(analytics_router, prefix=f"{settings.API_PREFIX}/analytics", tags=["Analytics"])
+
+# Direct endpoints requested for GET /dashboard and GET /analytics
+@app.get("/dashboard", status_code=status.HTTP_200_OK, tags=["Dashboard"])
+def get_dashboard_root(db: Session = Depends(get_db)):
+    from services.analytics_service import AnalyticsService
+    return AnalyticsService.get_dashboard_metrics(db)
+
+@app.get("/analytics", status_code=status.HTTP_200_OK, tags=["Analytics"])
+def get_analytics_root(db: Session = Depends(get_db)):
+    from services.analytics_service import AnalyticsService
+    return AnalyticsService.get_analytics_metrics(db)
 
 @app.get("/", status_code=status.HTTP_200_OK, tags=["Root"])
 def root():
