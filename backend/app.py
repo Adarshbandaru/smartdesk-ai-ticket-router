@@ -15,7 +15,9 @@ from routes.predict import router as predict_router
 from routes.feedback import router as feedback_router
 from routes.analytics import router as analytics_router
 from routes.auth import router as auth_router
-from schemas.schemas import FeedbackCreate, ExplainRequest
+from schemas.schemas import FeedbackCreate, ExplainRequest, UserLogin, UserRegister, Token, UserResponse
+from database.models import User
+from services.auth_service import get_current_user
 
 # Ensure tables are created
 Base.metadata.create_all(bind=engine)
@@ -119,6 +121,37 @@ def post_explain_root(request: ExplainRequest):
         model_type=request.model_type or "category",
         num_features=request.num_features or 10
     )
+
+# Direct endpoints requested for Authentication
+@app.post("/login", response_model=Token, status_code=status.HTTP_200_OK, tags=["Authentication"])
+def post_login_root(user_in: UserLogin, db: Session = Depends(get_db)):
+    from routes.auth import login as auth_login
+    return auth_login(user_in=user_in, db=db)
+
+@app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED, tags=["Authentication"])
+def post_register_root(user_in: UserRegister, db: Session = Depends(get_db)):
+    from routes.auth import register as auth_register
+    return auth_register(user_in=user_in, db=db)
+
+@app.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK, tags=["Authentication"])
+def get_me_root(current_user: User = Depends(get_current_user)):
+    return current_user
+
+# Settings endpoint
+@app.get("/settings", status_code=status.HTTP_200_OK, tags=["Settings"])
+def get_settings_root(current_user: User = Depends(get_current_user)):
+    return {
+        "auto_routing": True,
+        "confidence_threshold": 0.75,
+        "routing_engine": "hybrid_ml_rules",
+        "lime_enabled": True,
+        "environment": settings.ENVIRONMENT,
+        "active_user": {
+            "name": current_user.name,
+            "email": current_user.email,
+            "role": current_user.role
+        }
+    }
 
 @app.get("/", status_code=status.HTTP_200_OK, tags=["Root"])
 def root():

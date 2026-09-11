@@ -240,9 +240,9 @@ def seed_database(force_reseed: bool = False):
         # Seed Default Users
         users = [
             User(name="Admin User", email="admin@smartdesk.com", role="Admin", 
-                 password_hash="$2b$12$e8Y5tGj0b7t05z52j61XquB5l.jT/s/5WwQz3R3tF1D3u8fF9ZJGy"), # "admin"
+                 password_hash="$2b$12$mYBpJZDFCG1xaRMmnT/oG.sPE6SCdJQOuXTpyDMmYYxRCR6Q5ICwe"), # "admin123"
             User(name="Support Agent", email="agent@smartdesk.com", role="Support Agent", 
-                 password_hash="$2b$12$e8Y5tGj0b7t05z52j61XquB5l.jT/s/5WwQz3R3tF1D3u8fF9ZJGy"), # "agent"
+                 password_hash="$2b$12$LXzOMSzqEyN8RsggLuBmDunILnsfGt97ym53GO9GTkF6hX94tQqo6"), # "agent123"
         ]
         db.add_all(users)
 

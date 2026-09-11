@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "supersecret_smartdesk_production_key_change_in_prod"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7         # 7 days
     
     # Environment
     ENVIRONMENT: str = "development"

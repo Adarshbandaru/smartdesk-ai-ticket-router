@@ -138,8 +138,14 @@ class FeedbackResponse(BaseModel):
 
 # --- User & Auth Schemas ---
 class UserLogin(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., description="User corporate or agent email")
+    password: str = Field(..., description="Plaintext password")
+
+class UserRegister(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    email: str = Field(..., description="Unique email address")
+    password: str = Field(..., min_length=6, description="Password (min 6 chars)")
+    role: Optional[str] = Field("Support Agent", description="Role: Admin or Support Agent")
 
 class UserResponse(BaseModel):
     id: int
@@ -153,7 +159,12 @@ class UserResponse(BaseModel):
 
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    refresh_token: Optional[str] = None
+    token_type: str = "bearer"
+    user: Optional[UserResponse] = None
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 # --- Activity Log Schemas ---
 class ActivityLogResponse(BaseModel):
