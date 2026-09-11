@@ -1,17 +1,19 @@
 import { motion } from 'framer-motion';
 
-const GlassCard = ({ children, className = '', hover = true, glow = false, ...props }) => {
+const Card = ({ children, className = '', animate = true, ...props }) => {
+  if (!animate) {
+    return (
+      <div className={`card ${className}`} {...props}>
+        {children}
+      </div>
+    );
+  }
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-      className={`
-        glass-card rounded-2xl p-6
-        ${hover ? 'hover-glow' : ''}
-        ${glow ? 'gradient-glow' : ''}
-        ${className}
-      `}
+      transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+      className={`card ${className}`}
       {...props}
     >
       {children}
@@ -19,4 +21,4 @@ const GlassCard = ({ children, className = '', hover = true, glow = false, ...pr
   );
 };
 
-export default GlassCard;
+export default Card;

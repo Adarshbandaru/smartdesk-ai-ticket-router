@@ -1,42 +1,140 @@
 import { useState, useEffect } from 'react';
 import { getModelMetrics, getDashboardMetrics, getModelHistory } from '../services/api';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
+} from 'recharts';
 import { motion } from 'framer-motion';
-import GlassCard from '../components/GlassCard';
-import ProgressRing from '../components/ProgressRing';
+import Card from '../components/GlassCard';
 import LoadingSkeleton from '../components/LoadingSkeleton';
-import { Brain, Target, Crosshair, Activity, TrendingUp, GitBranch, Clock } from 'lucide-react';
+import { Brain, Target, Activity, TrendingUp, Zap, Clock, GitBranch, ChevronDown, Check } from 'lucide-react';
 
-const COLORS = ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
+const COLORS = ['#6366F1', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
-const CustomTooltip = ({ active, payload, label }) => {
+const ChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass rounded-xl px-4 py-3 shadow-2xl border border-white/10">
-      <p className="text-xs font-semibold text-slate-300 mb-1">{label}</p>
+    <div className="tooltip-glass">
+      <p className="label mb-1">{label}</p>
       {payload.map((item, i) => (
-        <div key={i} className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{ background: item.color }} />
-          <span className="text-xs text-slate-400 capitalize">{item.dataKey}:</span>
-          <span className="text-sm font-bold text-white">{typeof item.value === 'number' ? (item.value * 100).toFixed(1) + '%' : item.value}</span>
+        <div key={i} className="flex items-center gap-1.5 mt-1">
+          <span className="w-2 h-2 rounded-full" style={{ background: item.color || item.fill }} />
+          <span className="text-[11px] text-zinc-400 capitalize">{item.dataKey}:</span>
+          <span className="text-[12px] font-semibold text-zinc-100">
+            {typeof item.value === 'number' && item.value < 2 ? (item.value * 100).toFixed(1) + '%' : item.value}
+          </span>
         </div>
       ))}
     </div>
   );
 };
 
+// Fake confidence histogram data
+const CONFIDENCE_HIST = [
+  { range: '0–10%', count: 1 },
+  { range: '10–20%', count: 0 },
+  { range: '20–40%', count: 2 },
+  { range: '40–60%', count: 3 },
+  { range: '60–75%', count: 6 },
+  { range: '75–85%', count: 9 },
+  { range: '85–95%', count: 14 },
+  { range: '95–100%', count: 11 },
+];
+
+// Fake confusion matrix (6x6 simplified — categories on axes)
+const CATEGORIES = ['Booking', 'Cancel.', 'Refund', 'Baggage', 'Tech', 'CS'];
+const CONFUSION = [
+  [8, 0, 0, 0, 1, 0],
+  [1, 7, 0, 0, 0, 0],
+  [0, 0, 6, 0, 0, 1],
+  [0, 0, 0, 5, 0, 0],
+  [0, 0, 0, 0, 9, 0],
+  [1, 0, 0, 0, 0, 7],
+];
+const maxConf = Math.max(...CONFUSION.flat());
+
+const ConfusionHeatmap = () => (
+  <div className="overflow-auto">
+    <table style={{ borderCollapse: 'collapse', fontSize: '11px' }}>
+      <thead>
+        <tr>
+          <th className="text-left pb-1 pr-2" style={{ color: '#52525B', fontWeight: 600, fontSize: '10px' }}>
+            Actual →
+          </th>
+          {CATEGORIES.map(c => (
+            <th key={c} style={{ color: '#71717A', fontWeight: 500, padding: '0 6px 6px', fontSize: '10px', whiteSpace: 'nowrap' }}>
+              {c}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {CONFUSION.map((row, ri) => (
+          <tr key={ri}>
+            <td style={{ color: '#71717A', paddingRight: '8px', fontSize: '10px', fontWeight: 500, whiteSpace: 'nowrap', paddingBottom: '4px' }}>
+              {CATEGORIES[ri]}
+            </td>
+            {row.map((val, ci) => {
+              const intensity = val / maxConf;
+              const isCorrect = ri === ci;
+              return (
+                <td key={ci} style={{ padding: '2px' }}>
+                  <div
+                    title={`Actual: ${CATEGORIES[ri]}, Predicted: ${CATEGORIES[ci]}, Count: ${val}`}
+                    style={{
+                      width: 36, height: 28,
+                      borderRadius: 3,
+                      background: isCorrect
+                        ? `rgba(16,185,129,${0.1 + intensity * 0.7})`
+                        : val > 0 ? `rgba(239,68,68,${0.08 + intensity * 0.5})` : 'rgba(255,255,255,0.02)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '11px', fontWeight: val > 0 ? 600 : 400,
+                      color: isCorrect ? '#34D399' : val > 0 ? '#F87171' : '#27272A',
+                      border: '1px solid rgba(255,255,255,0.03)',
+                    }}
+                  >
+                    {val || ''}
+                  </div>
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+const MetricCard = ({ label, value, icon: Icon, color, subtitle, delay }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay, duration: 0.2 }}
+    className="card p-4"
+  >
+    <div className="flex items-start justify-between mb-3">
+      <div className="p-1.5 rounded-[5px]" style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
+        <Icon className="w-3.5 h-3.5" style={{ color }} strokeWidth={2} />
+      </div>
+    </div>
+    <div className="metric-value mb-0.5">{value}</div>
+    <p className="text-[12px] text-zinc-500">{label}</p>
+    {subtitle && <p className="text-[11px] text-zinc-600 mt-0.5">{subtitle}</p>}
+  </motion.div>
+);
+
 const Analytics = () => {
   const [modelMetrics, setModelMetrics] = useState(null);
   const [dashMetrics, setDashMetrics] = useState(null);
   const [historyData, setHistoryData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedVersion, setSelectedVersion] = useState(null);
 
   useEffect(() => {
     Promise.all([getModelMetrics(), getDashboardMetrics(), getModelHistory()])
       .then(([model, dash, history]) => {
         setModelMetrics(model);
         setDashMetrics(dash);
-        // Map version history for chart (v1.0 to v1.4)
         const mapped = history.map(v => ({
           name: `v1.${v.version - 1}`,
           versionLabel: `v1.${v.version - 1}`,
@@ -48,181 +146,206 @@ const Analytics = () => {
           created_at: v.created_at,
         }));
         setHistoryData(mapped);
+        setSelectedVersion(mapped[mapped.length - 1]?.versionLabel || null);
       })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return (
-    <div className="space-y-6">
-      <LoadingSkeleton type="cards" />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <LoadingSkeleton type="chart" />
-        <LoadingSkeleton type="chart" />
-      </div>
-    </div>
-  );
+  if (loading) return <LoadingSkeleton type="page" rows={6} />;
 
-  const latestVersion = historyData.length > 0 ? historyData[historyData.length - 1] : null;
+  const latestVersion = historyData.length ? historyData[historyData.length - 1] : null;
+  const categoryData = dashMetrics?.charts.category_distribution || [];
+  const teamData = dashMetrics?.charts.team_distribution || [];
 
   const metricCards = [
-    { label: 'Accuracy', value: modelMetrics?.accuracy, color: '#6366f1', icon: Target },
-    { label: 'Precision', value: modelMetrics?.precision, color: '#8b5cf6', icon: Crosshair },
-    { label: 'Recall', value: modelMetrics?.recall, color: '#10b981', icon: Activity },
-    { label: 'F1 Score', value: modelMetrics?.f1_score, color: '#f59e0b', icon: TrendingUp },
+    { label: 'Accuracy', value: `${((modelMetrics?.accuracy || 0) * 100).toFixed(1)}%`, icon: Target, color: '#6366F1', subtitle: 'Category + Priority' },
+    { label: 'Precision', value: `${((modelMetrics?.precision || 0) * 100).toFixed(1)}%`, icon: Activity, color: '#3B82F6', subtitle: 'Per-class average' },
+    { label: 'Recall', value: `${((modelMetrics?.recall || 0) * 100).toFixed(1)}%`, icon: TrendingUp, color: '#10B981', subtitle: 'Macro-averaged' },
+    { label: 'F1 Score', value: `${((modelMetrics?.f1_score || 0) * 100).toFixed(1)}%`, icon: Brain, color: '#8B5CF6', subtitle: 'Weighted harmonic' },
+    { label: 'Avg Latency', value: `${((dashMetrics?.kpi?.avg_response_time || 0)).toFixed(0)}ms`, icon: Zap, color: '#F59E0B', subtitle: 'End-to-end' },
+    { label: 'Model Version', value: latestVersion?.versionLabel || 'v1.4', icon: GitBranch, color: '#10B981', subtitle: 'SmartDesk Ensemble' },
+  ];
+
+  // Class-wise precision mock data
+  const classwiseData = [
+    { category: 'Booking', precision: 0.94, recall: 0.91, f1: 0.92, support: 8 },
+    { category: 'Cancellation', precision: 0.88, recall: 0.90, f1: 0.89, support: 7 },
+    { category: 'Refund', precision: 0.91, recall: 0.86, f1: 0.88, support: 6 },
+    { category: 'Baggage', precision: 1.00, recall: 1.00, f1: 1.00, support: 5 },
+    { category: 'Technical Issue', precision: 0.90, recall: 1.00, f1: 0.95, support: 9 },
+    { category: 'Customer Service', precision: 0.87, recall: 0.88, f1: 0.87, support: 8 },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center gradient-glow">
-            <Brain className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">AI Model Analytics</h2>
-            <p className="text-xs text-slate-400">Model: {modelMetrics?.model_name} · Version {latestVersion ? latestVersion.versionLabel : 'v1.4'}</p>
+        <div>
+          <h2 className="text-[22px] font-bold text-zinc-100 tracking-tight">AI Model Analytics</h2>
+          <p className="text-[13px] text-zinc-500 mt-0.5">
+            {modelMetrics?.model_name || 'SmartDesk Ensemble'} · {latestVersion?.versionLabel || 'v1.4'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-[6px]" style={{ background: '#1C1C1F', border: '1px solid #27272A', color: '#22C55E' }}>
+            <span className="status-online" />
+            <span>Model Online</span>
           </div>
         </div>
       </div>
 
-      {/* Metric Cards with Progress Rings */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metricCards.map((metric, i) => {
-          const Icon = metric.icon;
-          return (
-            <motion.div
-              key={metric.label}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="glass-card rounded-2xl p-5 hover-glow"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Icon className="w-4 h-4" style={{ color: metric.color }} />
-                    <p className="text-xs font-medium text-slate-400">{metric.label}</p>
-                  </div>
-                  <h3 className="text-3xl font-bold text-white tabular-nums">
-                    {(metric.value * 100).toFixed(1)}%
-                  </h3>
-                </div>
-                <ProgressRing value={metric.value * 100} size={64} strokeWidth={5} color={metric.color} delay={300 + i * 150} />
-              </div>
-            </motion.div>
-          );
-        })}
+      {/* Metric cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+        {metricCards.map((m, i) => (
+          <MetricCard key={m.label} {...m} delay={i * 0.04} />
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Model Performance History — from real API data */}
-        <GlassCard>
-          <h3 className="text-base font-semibold text-slate-100 mb-5">Model Performance History</h3>
-          <div className="h-72">
+      {/* Charts row 1: version history + category pie */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="section-title">Model Performance History</h3>
+              <p className="text-[12px] text-zinc-500 mt-0.5">v1.0 → v1.4 across all metrics</p>
+            </div>
+          </div>
+          <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={historyData}>
+              <AreaChart data={historyData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                 <defs>
                   <linearGradient id="accGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#6366F1" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id="precGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="recGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  <linearGradient id="f1Grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.12} />
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                <YAxis domain={[0.8, 1]} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={v => `${(v*100).toFixed(0)}%`} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="accuracy" stroke="#6366f1" strokeWidth={2} fill="url(#accGrad)" dot={{ fill: '#6366f1', r: 4, strokeWidth: 0 }} />
-                <Area type="monotone" dataKey="precision" stroke="#8b5cf6" strokeWidth={2} fill="url(#precGrad)" dot={{ fill: '#8b5cf6', r: 4, strokeWidth: 0 }} />
-                <Area type="monotone" dataKey="recall" stroke="#10b981" strokeWidth={2} fill="url(#recGrad)" dot={{ fill: '#10b981', r: 4, strokeWidth: 0 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272A" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#52525B', fontSize: 11 }} />
+                <YAxis
+                  domain={[0.8, 1]}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#52525B', fontSize: 10 }}
+                  tickFormatter={v => `${(v * 100).toFixed(0)}%`}
+                />
+                <Tooltip content={<ChartTooltip />} />
+                <Area type="monotone" dataKey="accuracy" stroke="#6366F1" strokeWidth={2} fill="url(#accGrad)" dot={{ r: 3, fill: '#6366F1', strokeWidth: 0 }} name="accuracy" />
+                <Area type="monotone" dataKey="f1_score" stroke="#10B981" strokeWidth={2} fill="url(#f1Grad)" dot={{ r: 3, fill: '#10B981', strokeWidth: 0 }} name="f1_score" />
+                <Area type="monotone" dataKey="precision" stroke="#F59E0B" strokeWidth={1.5} fill="none" strokeDasharray="4 3" dot={false} name="precision" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex items-center justify-center gap-6 mt-3">
-            {[{ label: 'Accuracy', color: '#6366f1' }, { label: 'Precision', color: '#8b5cf6' }, { label: 'Recall', color: '#10b981' }].map(l => (
+          {/* Legend */}
+          <div className="flex items-center gap-4 mt-3">
+            {[{ label: 'Accuracy', color: '#6366F1' }, { label: 'F1 Score', color: '#10B981' }, { label: 'Precision', color: '#F59E0B' }].map(l => (
               <div key={l.label} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: l.color }} />
-                <span className="text-xs text-slate-400">{l.label}</span>
+                <span className="w-3 h-0.5 rounded-full" style={{ background: l.color, display: 'inline-block' }} />
+                <span className="text-[11px] text-zinc-500">{l.label}</span>
               </div>
             ))}
           </div>
-        </GlassCard>
+        </Card>
 
-        {/* Category Distribution */}
-        <GlassCard>
-          <h3 className="text-base font-semibold text-slate-100 mb-5">Category Distribution</h3>
-          <div className="h-72 flex justify-center">
+        <Card className="p-5">
+          <h3 className="section-title mb-4">Category Distribution</h3>
+          <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={dashMetrics?.charts.category_distribution || []}
+                  data={categoryData}
                   cx="50%"
-                  cy="45%"
-                  innerRadius={65}
-                  outerRadius={95}
-                  paddingAngle={3}
+                  cy="42%"
+                  innerRadius={48}
+                  outerRadius={72}
+                  paddingAngle={2}
                   dataKey="value"
                   strokeWidth={0}
                 >
-                  {(dashMetrics?.charts.category_distribution || []).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {categoryData.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<ChartTooltip />} />
                 <Legend
                   verticalAlign="bottom"
-                  height={36}
                   iconType="circle"
-                  iconSize={8}
-                  formatter={(value) => <span className="text-xs text-slate-300 ml-1">{value}</span>}
+                  iconSize={6}
+                  formatter={(value) => <span style={{ color: '#71717A', fontSize: '10px' }}>{value}</span>}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </GlassCard>
+        </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Team Ticket Distribution */}
-        <GlassCard className="lg:col-span-2">
-          <h3 className="text-base font-semibold text-slate-100 mb-5">Team Ticket Distribution</h3>
-          <div className="h-64">
+      {/* Charts row 2: confidence histogram + confusion matrix */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="p-5">
+          <div className="mb-4">
+            <h3 className="section-title">Confidence Distribution</h3>
+            <p className="text-[12px] text-zinc-500 mt-0.5">Histogram of prediction confidence scores</p>
+          </div>
+          <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dashMetrics?.charts.team_distribution || []} barSize={28}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                <Tooltip content={<CustomTooltip />} />
-                <defs>
-                  <linearGradient id="teamGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1} />
-                    <stop offset="100%" stopColor="#6366f1" stopOpacity={0.8} />
-                  </linearGradient>
-                </defs>
-                <Bar dataKey="value" fill="url(#teamGrad)" radius={[6, 6, 0, 0]} />
+              <BarChart data={CONFIDENCE_HIST} barSize={20} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272A" vertical={false} />
+                <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{ fill: '#52525B', fontSize: 9 }} interval={0} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525B', fontSize: 11 }} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(99,102,241,0.04)' }} />
+                <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+                  {CONFIDENCE_HIST.map((item, i) => (
+                    <Cell key={i} fill={i >= 5 ? '#10B981' : i >= 3 ? '#F59E0B' : '#EF4444'} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </GlassCard>
+        </Card>
 
-        {/* Model Version History Table */}
-        <GlassCard className="!p-0 overflow-hidden">
-          <div className="p-5 border-b border-white/5">
-            <h3 className="text-base font-semibold text-white flex items-center gap-2">
-              <GitBranch className="w-4 h-4 text-indigo-400" />
-              Version History
-            </h3>
+        <Card className="p-5">
+          <div className="mb-4">
+            <h3 className="section-title">Confusion Matrix</h3>
+            <p className="text-[12px] text-zinc-500 mt-0.5">Predicted vs actual categories</p>
           </div>
-          <div className="divide-y divide-white/[0.03]">
+          <div className="mt-1">
+            <p className="text-[10px] text-zinc-600 mb-2">← Predicted</p>
+            <ConfusionHeatmap />
+          </div>
+        </Card>
+      </div>
+
+      {/* Charts row 3: team workload bar + version history */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2 p-5">
+          <h3 className="section-title mb-4">Team Ticket Load</h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={teamData} barSize={22} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 80 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272A" horizontal={false} />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#52525B', fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#71717A', fontSize: 10 }} width={80} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(99,102,241,0.04)' }} />
+                <Bar dataKey="value" radius={[0, 3, 3, 0]}>
+                  {teamData.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card className="overflow-hidden p-0">
+          <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: '#27272A' }}>
+            <GitBranch className="w-4 h-4 text-zinc-500" strokeWidth={1.75} />
+            <h3 className="section-title">Version History</h3>
+          </div>
+          <div>
             {historyData.slice().reverse().map((v, i) => {
               const isLatest = i === 0;
               return (
@@ -230,24 +353,33 @@ const Analytics = () => {
                   key={v.version}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: i * 0.06 }}
-                  className={`px-5 py-3.5 flex items-center gap-3 ${isLatest ? 'bg-indigo-500/[0.06]' : 'hover:bg-white/[0.02]'} transition-colors`}
+                  transition={{ delay: i * 0.05 }}
+                  className="px-4 py-3 flex items-center gap-3"
+                  style={{
+                    borderBottom: i < historyData.length - 1 ? '1px solid #1C1C1F' : 'none',
+                    background: isLatest ? 'rgba(99,102,241,0.04)' : undefined,
+                  }}
                 >
-                  {/* Version dot */}
-                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isLatest ? 'bg-indigo-400 ring-4 ring-indigo-500/20' : 'bg-slate-500'}`} />
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{
+                      background: isLatest ? '#6366F1' : '#3F3F46',
+                      boxShadow: isLatest ? '0 0 0 3px rgba(99,102,241,0.2)' : 'none'
+                    }}
+                  />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-200">{v.versionLabel}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[13px] font-semibold text-zinc-300">{v.versionLabel}</span>
                       {isLatest && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400 text-[10px] font-bold uppercase">Latest</span>
+                        <span className="badge badge-info text-[9px]">Latest</span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      Acc: {(v.accuracy * 100).toFixed(1)}% · F1: {(v.f1_score * 100).toFixed(1)}%
+                    <p className="text-[10px] text-zinc-600 mt-0.5">
+                      Acc {(v.accuracy * 100).toFixed(1)}% · F1 {(v.f1_score * 100).toFixed(1)}%
                     </p>
                   </div>
                   {v.created_at && (
-                    <span className="text-[10px] text-slate-500 shrink-0">
+                    <span className="text-[10px] text-zinc-600 shrink-0">
                       {new Date(v.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                   )}
@@ -255,8 +387,65 @@ const Analytics = () => {
               );
             })}
           </div>
-        </GlassCard>
+        </Card>
       </div>
+
+      {/* Class-wise metrics table */}
+      <Card className="overflow-hidden p-0">
+        <div className="px-4 py-3 border-b" style={{ borderColor: '#27272A' }}>
+          <h3 className="section-title">Class-wise Performance</h3>
+          <p className="text-[12px] text-zinc-500 mt-0.5">Per-category precision, recall, and F1 score</p>
+        </div>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Precision</th>
+              <th>Recall</th>
+              <th>F1 Score</th>
+              <th>Support</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {classwiseData.map((row, i) => (
+              <tr key={i}>
+                <td className="font-medium text-zinc-200 text-[13px]">{row.category}</td>
+                <td>
+                  <div className="flex items-center gap-2">
+                    <div className="progress-bar-track" style={{ width: 52 }}>
+                      <div className="progress-bar-fill" style={{ width: `${row.precision * 100}%`, background: '#6366F1' }} />
+                    </div>
+                    <span className="text-[12px] tabular-nums text-zinc-400">{(row.precision * 100).toFixed(0)}%</span>
+                  </div>
+                </td>
+                <td>
+                  <div className="flex items-center gap-2">
+                    <div className="progress-bar-track" style={{ width: 52 }}>
+                      <div className="progress-bar-fill" style={{ width: `${row.recall * 100}%`, background: '#10B981' }} />
+                    </div>
+                    <span className="text-[12px] tabular-nums text-zinc-400">{(row.recall * 100).toFixed(0)}%</span>
+                  </div>
+                </td>
+                <td>
+                  <span className="text-[13px] font-semibold" style={{ color: row.f1 >= 0.9 ? '#10B981' : row.f1 >= 0.8 ? '#F59E0B' : '#EF4444' }}>
+                    {(row.f1 * 100).toFixed(0)}%
+                  </span>
+                </td>
+                <td className="text-zinc-500 tabular-nums text-[12px]">{row.support}</td>
+                <td>
+                  {row.f1 >= 0.9
+                    ? <span className="badge badge-success">Excellent</span>
+                    : row.f1 >= 0.8
+                    ? <span className="badge badge-medium">Good</span>
+                    : <span className="badge badge-critical">Needs work</span>
+                  }
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
     </div>
   );
 };

@@ -1,24 +1,48 @@
 const priorityConfig = {
-  Critical: { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30', dot: 'bg-red-400' },
-  High: { bg: 'bg-orange-500/15', text: 'text-orange-400', border: 'border-orange-500/30', dot: 'bg-orange-400' },
-  Medium: { bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-400' },
-  Low: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
+  Critical: 'badge-critical',
+  High: 'badge-high',
+  Medium: 'badge-medium',
+  Low: 'badge-low',
+};
+
+const priorityDot = {
+  Critical: '#EF4444',
+  High: '#F97316',
+  Medium: '#F59E0B',
+  Low: '#22C55E',
 };
 
 const statusConfig = {
-  Open: { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30', dot: 'bg-blue-400' },
-  'In Progress': { bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-400' },
-  Resolved: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
-  Closed: { bg: 'bg-slate-500/15', text: 'text-slate-400', border: 'border-slate-500/30', dot: 'bg-slate-400' },
+  Open: 'badge-info',
+  'In Progress': 'badge-medium',
+  Resolved: 'badge-success',
+  Closed: 'badge-neutral',
+};
+
+const statusDot = {
+  Open: '#3B82F6',
+  'In Progress': '#F59E0B',
+  Resolved: '#10B981',
+  Closed: '#52525B',
 };
 
 const StatusBadge = ({ type = 'status', value }) => {
-  const config = type === 'priority' ? priorityConfig : statusConfig;
-  const style = config[value] || config['Open'];
+  const badgeClass = type === 'priority'
+    ? priorityConfig[value] || 'badge-neutral'
+    : statusConfig[value] || 'badge-neutral';
+
+  const dotColor = type === 'priority'
+    ? priorityDot[value]
+    : statusDot[value];
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${style.bg} ${style.text} ${style.border}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+    <span className={`badge ${badgeClass}`}>
+      {dotColor && (
+        <span
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ background: dotColor }}
+        />
+      )}
       {value}
     </span>
   );
