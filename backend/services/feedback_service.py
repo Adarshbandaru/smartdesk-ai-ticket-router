@@ -13,6 +13,7 @@ class FeedbackService:
             predicted_priority=feedback_in.predicted_priority,
             actual_priority=feedback_in.actual_priority,
             comments=feedback_in.comments,
+            reviewed_by=feedback_in.reviewed_by or "Support Lead",
             is_processed=False
         )
         db.add(feedback)
@@ -22,7 +23,7 @@ class FeedbackService:
             action="FEEDBACK_SUBMITTED",
             entity_type="feedback",
             entity_id=str(feedback.id),
-            details=f"Feedback submitted for ticket #{feedback.ticket_id}: actual={feedback.actual_category}/{feedback.actual_priority}"
+            details=f"Feedback by {feedback.reviewed_by} on ticket #{feedback.ticket_id}: actual={feedback.actual_category}/{feedback.actual_priority}"
         )
         db.add(log)
         db.commit()

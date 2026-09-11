@@ -88,6 +88,7 @@ class FeedbackCreate(BaseModel):
     predicted_priority: str
     actual_priority: str
     comments: Optional[str] = None
+    reviewed_by: Optional[str] = "Support Lead"
 
 class FeedbackResponse(BaseModel):
     id: int
@@ -97,6 +98,7 @@ class FeedbackResponse(BaseModel):
     predicted_priority: str
     actual_priority: str
     comments: Optional[str] = None
+    reviewed_by: Optional[str] = "Support Lead"
     is_processed: bool
     created_at: Optional[datetime] = None
 

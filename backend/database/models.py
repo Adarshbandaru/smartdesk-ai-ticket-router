@@ -58,6 +58,7 @@ class Feedback(Base):
     predicted_priority = Column(String(50), nullable=False)
     actual_priority = Column(String(50), nullable=False)
     comments = Column(Text, nullable=True)
+    reviewed_by = Column(String(100), nullable=True, default="Support Lead")
     is_processed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

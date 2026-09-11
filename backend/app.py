@@ -15,6 +15,7 @@ from routes.predict import router as predict_router
 from routes.feedback import router as feedback_router
 from routes.analytics import router as analytics_router
 from routes.auth import router as auth_router
+from schemas.schemas import FeedbackCreate
 
 # Ensure tables are created
 Base.metadata.create_all(bind=engine)
@@ -85,6 +86,28 @@ def get_dashboard_root(db: Session = Depends(get_db)):
 def get_analytics_root(db: Session = Depends(get_db)):
     from services.analytics_service import AnalyticsService
     return AnalyticsService.get_analytics_metrics(db)
+
+# Direct endpoints requested for Feedback & Retraining
+@app.post("/feedback", status_code=status.HTTP_201_CREATED, tags=["Feedback"])
+def post_feedback_root(feedback: FeedbackCreate, db: Session = Depends(get_db)):
+    from services.feedback_service import FeedbackService
+    saved = FeedbackService.submit_feedback(db=db, feedback_in=feedback)
+    return {
+        "status": "success",
+        "message": "Feedback submitted successfully",
+        "feedback_id": saved.id,
+        "reviewed_by": saved.reviewed_by
+    }
+
+@app.get("/feedback", status_code=status.HTTP_200_OK, tags=["Feedback"])
+def get_feedback_root(db: Session = Depends(get_db)):
+    from services.feedback_service import FeedbackService
+    return FeedbackService.get_pending_queue(db=db)
+
+@app.post("/retrain", status_code=status.HTTP_200_OK, tags=["Retraining"])
+def post_retrain_root(db: Session = Depends(get_db)):
+    from ml.retrain import RetrainingPipeline
+    return RetrainingPipeline.run_retraining(db)
 
 @app.get("/", status_code=status.HTTP_200_OK, tags=["Root"])
 def root():
