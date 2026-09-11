@@ -1,10 +1,11 @@
 import time
 import logging
+import traceback
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import Response, JSONResponse
 
-logger = logging.getLogger("smartdesk.access")
+logger = logging.getLogger("smartdesk.production")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -21,3 +22,24 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         )
         
         return response
+
+
+class ErrorHandlingMiddleware(BaseHTTPMiddleware):
+    """
+    Global exception catching middleware to ensure clean JSON error responses in production.
+    """
+    async def dispatch(self, request: Request, call_next) -> Response:
+        try:
+            return await call_next(request)
+        except Exception as exc:
+            logger.error(f"Unhandled Exception on {request.method} {request.url.path}: {str(exc)}")
+            logger.error(traceback.format_exc())
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "error",
+                    "detail": "Internal Server Error",
+                    "path": request.url.path,
+                    "error_message": str(exc)
+                }
+            )

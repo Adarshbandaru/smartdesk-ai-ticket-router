@@ -8,7 +8,7 @@ from config import settings
 from database.session import Base, engine, get_db
 import database.models  # Register all models with Base
 from database.seed import seed_database
-from utils.logger import LoggingMiddleware, logger
+from utils.logger import LoggingMiddleware, ErrorHandlingMiddleware, logger
 
 from routes.tickets import router as tickets_router
 from routes.predict import router as predict_router
@@ -48,7 +48,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Request Latency Logging Middleware
+# Request Latency Logging Middleware & Error Handler
+app.add_middleware(ErrorHandlingMiddleware)
 app.add_middleware(LoggingMiddleware)
 
 # CORS Middleware configured for React frontend
