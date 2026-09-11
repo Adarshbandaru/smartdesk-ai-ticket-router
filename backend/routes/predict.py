@@ -1,26 +1,31 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from typing import Optional
 from schemas.schemas import TicketCreate, PredictionResponse
 from database.session import get_db
-from ml.pipeline import ml_pipeline
-from ml.lime_explainer import explain_prediction
-import time
+from ml.inference import inference_pipeline
 
 router = APIRouter()
 
-@router.post("/", response_model=PredictionResponse, status_code=status.HTTP_200_OK)
-def predict_ticket(request: TicketCreate, db: Session = Depends(get_db)):
+@router.post(
+    "/",
+    response_model=PredictionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="AI Ticket Classification & Routing Inference",
+    description="Processes ticket title and description through DistilBERT category classifier, TF-IDF + Logistic Regression priority model, and TF-IDF + XGBoost root cause model."
+)
+def predict_ticket(
+    request: TicketCreate,
+    save: bool = Query(True, description="Whether to automatically save the routed ticket into the database"),
+    db: Session = Depends(get_db)
+):
     try:
-        start_time = time.time()
-        preds = ml_pipeline.predict(request.title, request.description)
-        
-        # Calculate LIME explanation
-        lime_exp = explain_prediction(request.title + " " + request.description, model_type="category")
-        preds["lime_explanation"] = lime_exp
-        
-        total_time = round((time.time() - start_time) * 1000, 2)
-        preds["processing_time_ms"] = total_time
-        
+        preds = inference_pipeline.predict(
+            title=request.title,
+            description=request.description,
+            db=db,
+            save_to_db=save
+        )
         return preds
     except Exception as e:
         raise HTTPException(

@@ -76,6 +76,8 @@ class PredictionResponse(BaseModel):
     root_cause_confidence: float
     assigned_team: str
     processing_time_ms: float
+    ticket_id: Optional[str] = None
+    id: Optional[int] = None
     lime_explanation: Optional[LimeExplanation] = None
 
 # --- Feedback Schemas ---

@@ -1,12 +1,13 @@
 from lime.lime_text import LimeTextExplainer
-from ml.pipeline import ml_pipeline
 
-explainer = LimeTextExplainer(class_names=["Class"]) # We will adapt dynamically
+explainer = LimeTextExplainer(class_names=["Booking", "Cancellation", "Refund", "Baggage", "Technical Issue", "Customer Service"])
 
 def explain_prediction(text: str, model_type: str = "category"):
     """
     Returns LIME explanation for a given model type ("category", "priority", "root_cause").
     """
+    from ml.pipeline import ml_pipeline
+
     if model_type == "category":
         model = ml_pipeline.cat_model
         classes = model.classes_
@@ -14,9 +15,6 @@ def explain_prediction(text: str, model_type: str = "category"):
         model = ml_pipeline.pri_model
         classes = model.classes_
     else:
-        # XGBoost requires label encoded output, slightly different pipeline
-        # For simplicity in this demo, let's explain the Priority model by default or Category.
-        # Let's just focus on Category for LIME to keep it fast and relevant.
         model = ml_pipeline.cat_model
         classes = model.classes_
         

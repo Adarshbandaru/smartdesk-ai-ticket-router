@@ -25,11 +25,11 @@ async def lifespan(app: FastAPI):
     from initialize import initialize_models
     initialize_models()
     
-    # Load ML models into memory
+    # Load ML models into memory once at startup
     logger.info("Loading ML prediction pipelines...")
-    from ml.pipeline import ml_pipeline
-    ml_pipeline.load_models()
-    logger.info("ML Models loaded successfully.")
+    from ml.inference import inference_pipeline
+    inference_pipeline.load_models()
+    logger.info("ML Models loaded successfully into memory.")
     
     # Ensure database is seeded with 50 realistic airline tickets
     seed_database(force_reseed=False)
