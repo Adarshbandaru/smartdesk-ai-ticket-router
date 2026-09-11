@@ -1,7 +1,9 @@
 from schemas.schemas import (
     TicketCreate,
-    TicketResponse,
+    TicketUpdate,
     TicketUpdateStatus,
+    TicketResponse,
+    TicketListResponse,
     CategoryCandidate,
     LimeExplanation,
     PredictionResponse,
@@ -15,8 +17,10 @@ from schemas.schemas import (
 
 __all__ = [
     "TicketCreate",
-    "TicketResponse",
+    "TicketUpdate",
     "TicketUpdateStatus",
+    "TicketResponse",
+    "TicketListResponse",
     "CategoryCandidate",
     "LimeExplanation",
     "PredictionResponse",

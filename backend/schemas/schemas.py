@@ -4,15 +4,34 @@ from datetime import datetime
 
 # --- Ticket Schemas ---
 class TicketCreate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=255)
-    description: str = Field(..., min_length=1)
+    title: str = Field(..., min_length=1, max_length=255, description="Brief summary of the issue")
+    description: str = Field(..., min_length=1, description="Detailed description of the issue")
+    category: Optional[str] = Field(None, description="Support category (e.g. Booking, Cancellation, Baggage)")
+    priority: Optional[str] = Field(None, description="Ticket priority: Critical, High, Medium, Low")
+    root_cause: Optional[str] = Field(None, description="Identified root cause")
+    assigned_team: Optional[str] = Field(None, description="Routing team destination")
+    confidence_score: Optional[float] = Field(None, description="Prediction model confidence score")
+    confidence: Optional[float] = Field(None, description="Alias for confidence_score")
+    processing_time_ms: Optional[float] = Field(None, description="Model inference latency in ms")
+    processing_time: Optional[float] = Field(None, description="Alias for processing_time_ms")
+    status: Optional[str] = Field("Open", description="Status: Open, In Progress, Resolved, Closed")
+
+class TicketUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, min_length=1)
+    category: Optional[str] = None
+    priority: Optional[str] = None
+    root_cause: Optional[str] = None
+    assigned_team: Optional[str] = None
+    confidence_score: Optional[float] = None
+    status: Optional[str] = None
 
 class TicketUpdateStatus(BaseModel):
-    status: str
+    status: str = Field(..., description="Valid status: Open, In Progress, Resolved, Closed")
 
 class TicketResponse(BaseModel):
-    id: int
-    ticket_id: Optional[str] = None
+    ticket_id: str = Field(..., description="UUID identifier for the ticket")
+    id: int = Field(..., description="Numeric internal database ID")
     title: str
     description: str
     category: str
@@ -29,6 +48,13 @@ class TicketResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class TicketListResponse(BaseModel):
+    tickets: List[TicketResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
 
 # --- Prediction & Explanation Schemas ---
 class CategoryCandidate(BaseModel):
